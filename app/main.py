@@ -1,7 +1,7 @@
 from typing import Optional, Callable
 from fastapi import FastAPI
 from pydantic import BaseModel
-from db import Database
+from .dbconnector import Database
 import functools
 
 
