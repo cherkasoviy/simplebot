@@ -18,7 +18,7 @@ app = FastAPI()
 
 @app.get('/')
 async def root():
-    return {"message": "Отправьте /start для начала диалога"}
+    return {"message_from_bot": "Отправьте /start для начала диалога"}
 
 
 @app.post('/')
