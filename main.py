@@ -1,6 +1,8 @@
-from typing import Optional
+from typing import Optional, Callable
 from fastapi import FastAPI
 from pydantic import BaseModel
+from db import Database
+import functools
 
 
 class Message(BaseModel):
@@ -16,13 +18,44 @@ NO = ['нет', 'нет, конечно', 'ноуп', 'найн', 'не-а', 'ф
 app = FastAPI()
 
 
+def db_logger(func: Callable) -> Callable:
+    """
+    Decorator which will log every request and answer to DB
+    :param func: Callable
+    :return: Callable
+    """
+
+    @functools.wraps(func)
+    async def wrapped_func(message: Message):
+        db = Database('history.db')
+        db.add(message.user_id, 'REQUEST', message.user_text, str(message.dict()))  # logging users request
+        result: dict = await func(message)
+        db.add(result['user_id'], 'ANSWER', result['message_from_bot'], str(result))  # logging our answer
+        return result
+    return wrapped_func
+
+
 @app.get('/')
-async def root():
-    return {"message_from_bot": "Отправьте /start для начала диалога"}
+@db_logger
+async def root(message: Message = Message(user_id='unknown user', user_text='Hello')):
+    """
+    Default GET endpoint, to be tested from browser
+    :param message:
+    :return:
+    """
+    message_dict = message.dict()
+    message_dict.update({"message_from_bot": "Отправьте /start для начала диалога"})
+    return message_dict
 
 
 @app.post('/')
+@db_logger
 async def message_from_user(message: Message):
+    """
+    Main POST endpoint to receive answers from user
+    :param message:
+    :return:
+    """
     message_dict = message.dict()
     if message.user_text.lower() == '/start':
         message_dict.update({'message_from_bot': 'Привет! Я помогу отличить кота от хлеба! '
